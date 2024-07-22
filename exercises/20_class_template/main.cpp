@@ -1,5 +1,8 @@
 ﻿#include "../exercise.h"
-
+#include <algorithm>
+#include <array>
+#include <numeric>
+#include <vector>
 // READ: 类模板 <https://zh.cppreference.com/w/cpp/language/class_template>
 
 template<class T>
@@ -10,6 +13,10 @@ struct Tensor4D {
     Tensor4D(unsigned int const shape_[4], T const *data_) {
         unsigned int size = 1;
         // TODO: 填入正确的 shape 并计算 size
+        std::copy(shape_, shape_ + 4, shape);
+        for (auto &&i : shape)
+            size *= i;
+
         data = new T[size];
         std::memcpy(data, data_, size * sizeof(T));
     }
@@ -28,6 +35,39 @@ struct Tensor4D {
     // 则 `this` 与 `others` 相加时，3 个形状为 `[1, 2, 1, 4]` 的子张量各自与 `others` 对应项相加。
     Tensor4D &operator+=(Tensor4D const &others) {
         // TODO: 实现单向广播的加法
+        const size_t size = std::accumulate(std::begin(shape), std::end(shape), 1, std::multiplies<size_t>());
+
+        for (size_t index = 0; index < size; ++index) {
+            std::array<size_t, 4> indices{};
+            std::array<size_t, 4> strides{};
+
+            // initialise strides
+            strides.back() = 1;
+            for (int i = 2; i >= 0; --i)
+                strides.at(i) = strides.at(i + 1) * shape[i + 1];
+
+            // calculate multi-dimension index
+            for (int i = 3; i >= 0; --i)
+                indices.at(i) = (index / strides.at(i)) % shape[i];
+
+            size_t broadcasted_index = 0;
+            std::array<size_t, 4> broadcasted_strides{};
+
+            // initialise broadcasted strides
+            broadcasted_strides.back() = 1;
+            for (int i = 2; i >= 0; --i)
+                broadcasted_strides.at(i) = broadcasted_strides.at(i + 1) * others.shape[i + 1];
+
+            // adjust broadcasted index
+            for (size_t i = 0; i < 4; ++i) {
+                if (others.shape[i] == 1)
+                    indices.at(i) = 0;
+                broadcasted_index += indices[i] * broadcasted_strides[i];
+            }
+
+            data[index] += others.data[broadcasted_index];
+        }
+
         return *this;
     }
 };
