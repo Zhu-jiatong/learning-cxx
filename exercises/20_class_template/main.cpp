@@ -3,6 +3,7 @@
 #include <array>
 #include <numeric>
 #include <vector>
+#include <cstring>
 // READ: 类模板 <https://zh.cppreference.com/w/cpp/language/class_template>
 
 template<class T>
